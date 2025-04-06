@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FixFlow AI Assistant</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #121212;
+      color: #e0e0e0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+    }
+
+    h2 {
+      color: #00d1ff;
+      margin-bottom: 1.5rem;
+    }
+
+    #chatBox {
+      width: 100%;
+      max-width: 800px;
+      background-color: #1e1e1e;
+      border-radius: 10px;
+      padding: 1rem;
+      height: 400px;
+      overflow-y: auto;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+      margin-bottom: 1rem;
+    }
+
+    .msg {
+      margin-bottom: 1rem;
+      line-height: 1.5;
+    }
+
+    .user {
+      color: #03a9f4;
+    }
+
+    .bot {
+      color: #8bc34a;
+    }
+
+    input[type="text"] {
+      width: 80%;
+      max-width: 600px;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      outline: none;
+      background-color: #2a2a2a;
+      color: #e0e0e0;
+      margin-bottom: 1rem;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .btn-group button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.3s ease;
+    }
+
+    .btn-chat { background-color: #2196f3; color: white; }
+    .btn-chat:hover { background-color: #1976d2; }
+
+    .btn-summary { background-color: #4caf50; color: white; }
+    .btn-summary:hover { background-color: #388e3c; }
+
+    .btn-update { background-color: #ff9800; color: white; }
+    .btn-update:hover { background-color: #f57c00; }
+
+    .btn-search { background-color: #9c27b0; color: white; }
+    .btn-search:hover { background-color: #7b1fa2; }
+
+    #summary, #actions {
+      width: 100%;
+      max-width: 800px;
+      padding: 1rem;
+      background-color: #1e1e1e;
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      box-shadow: 0 0 10px rgba(0,0,0,0.4);
+    }
+
+    ul {
+      margin-left: 1.2rem;
+    }
+
+    strong {
+      color: #00d1ff;
+    }
+  </style>
+</head>
+<body>
+  <h2>🤖 FixFlow AI Assistant</h2>
+
+  <div id="chatBox"></div>
+
+  <input type="text" id="userInput" placeholder="Ask something...">
+
+  <div class="btn-group">
+    <button class="btn-chat" onclick="sendMessage('/api/chat')">Send Chat</button>
+    <button class="btn-summary" onclick="sendMessage('/get_response/')">Smart Summary + Actions</button>
+    <button class="btn-update" onclick="sendMessage('/updatedb')">Update DB</button>
+    <button class="btn-search" onclick="sendSimilarTickets()">🔍 Similar Tickets</button>
+  </div>
+
+  <div id="summary"></div>
+  <div id="actions"></div>
+
+  <script>
+    async function sendMessage(apiUrl) {
+      const input = document.getElementById("userInput");
+      const chatBox = document.getElementById("chatBox");
+      const summaryBox = document.getElementById("summary");
+      const actionsBox = document.getElementById("actions");
+      const userMessage = input.value.trim();
+      if (!userMessage) return;
+
+      summaryBox.innerHTML = "";
+      actionsBox.innerHTML = "";
+
+      chatBox.innerHTML += `<div class="msg user">🧑: ${userMessage}</div>`;
+      input.value = "";
+
+      try {
+        const res = await fetch(apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: userMessage })
+        });
+
+        const data = await res.json();
+        chatBox.innerHTML += `<div class="msg bot">🤖: ${data.response}</div>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        if (data.summary) {
+          summaryBox.innerHTML += `<strong>📝 Summary:</strong> ${data.summary}<br>`;
+        }
+
+        if (data.actions && data.actions.length) {
+          const actionsHtml = data.actions.map(a => `<li>${a}</li>`).join("");
+          summaryBox.innerHTML += `<strong>✅ Action Items:</strong><ul>${actionsHtml}</ul>`;
+        }
+
+        if (data.intent) {
+          summaryBox.innerHTML += `<strong>🧠 Intent:</strong> ${data.intent}<br>`;
+        }
+
+        if (data.assigned_team) {
+          summaryBox.innerHTML += `<strong>👥 Assigned Team:</strong> ${data.assigned_team}<br>`;
+        }
+
+        if (data.assigned_agent) {
+          summaryBox.innerHTML += `<strong>🧑‍💼 Assigned Agent:</strong> ${data.assigned_agent}<br>`;
+        }
+
+        if (data.emotions) {
+          summaryBox.innerHTML += `<strong>😶‍🌫️ Emotions:</strong> ${Array.isArray(data.emotions) ? data.emotions.join(', ') : data.emotions}<br>`;
+        }
+
+        if (data.tags) {
+          summaryBox.innerHTML += `<strong>🏷️ Tags:</strong> ${Array.isArray(data.tags) ? data.tags.join(', ') : data.tags}<br>`;
+        }
+
+      } catch (error) {
+        chatBox.innerHTML += `<div class="msg bot">❌ Error: ${error.message}</div>`;
+      }
+    }
+
+    async function sendSimilarTickets() {
+      const input = document.getElementById("userInput");
+      const chatBox = document.getElementById("chatBox");
+      const query = input.value.trim();
+      if (!query) return;
+
+      chatBox.innerHTML += `<div class="msg user">🧑: Show me similar tickets for: "${query}"</div>`;
+      input.value = "";
+
+      try {
+        const res = await fetch('/api/search_tickets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query })
+        });
+
+        const data = await res.json();
+        if (data.results && data.results.length) {
+          let msg = `<div class="msg bot"><strong>🔎 Similar Tickets:</strong><ul>`;
+          data.results.forEach(ticket => {
+            msg += `<li><strong>ID:</strong> ${ticket.id}<br><strong>User Message:</strong> ${ticket.user_message}<br><strong>Summary:</strong> ${ticket.summary || "N/A"}</li><br>`;
+          });
+          msg += `</ul></div>`;
+          chatBox.innerHTML += msg;
+        } else {
+          chatBox.innerHTML += `<div class="msg bot">🤖 No similar tickets found.</div>`;
+        }
+
+        chatBox.scrollTop = chatBox.scrollHeight;
+      } catch (err) {
+        chatBox.innerHTML += `<div class="msg bot">❌ Error: ${err.message}</div>`;
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FixFlow Admin Panel</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #121212;
+      color: #e0e0e0;
+      padding: 2rem;
+    }
+
+    h1 {
+      color: #00d1ff;
+      margin-bottom: 1rem;
+    }
+
+    .categories {
+      margin-bottom: 2rem;
+    }
+
+    .category-btn {
+      background-color: #1e1e1e;
+      border: 1px solid #00d1ff;
+      color: #00d1ff;
+      padding: 0.5rem 1rem;
+      margin: 0.3rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .category-btn:hover {
+      background-color: #00d1ff;
+      color: #121212;
+    }
+
+    .log {
+      background-color: #1e1e1e;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    }
+
+    .intent {
+      color: #ffc107;
+      font-weight: bold;
+    }
+
+    strong {
+      color: #4fc3f7;
+    }
+
+    em {
+      font-size: 0.9rem;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>📊 FixFlow Chat Logs</h1>
+
+  <div class="categories" id="teamCategories"></div>
+
+  <div id="logs"></div>
+
+  <script>
+    let allLogs = [];
+
+    function renderLogs(logsToRender) {
+      const logsDiv = document.getElementById("logs");
+      logsDiv.innerHTML = '';
+      logsToRender.forEach(log => {
+        const el = document.createElement("div");
+        el.className = "log";
+        el.innerHTML = `
+          <div><strong>🧑 User:</strong> ${log.user_message}</div>
+          <div><strong>📝 Summary:</strong> ${log.summary}</div>
+          <div><strong>✅ Actions:</strong> ${log.actions}</div>
+          <div><strong>🧠 Intent:</strong> <span class="intent">${log.intent}</span></div>
+          <div><strong>👥 Team:</strong> ${log.assigned_team}</div>
+          <div><strong>👤 Agent:</strong> ${log.assigned_agent || 'N/A'}</div>
+          <div><strong>🎭 Emotions:</strong> ${log.emotions}</div>
+          <div><strong>🏷️ Tags:</strong> ${log.tags}</div>
+          <div><em>🕒 ${log.timestamp}</em></div>
+        `;
+        logsDiv.appendChild(el);
+      });
+    }
+
+    function generateTeamButtons(logs) {
+      const categoriesDiv = document.getElementById("teamCategories");
+      const teamCount = {};
+
+      logs.forEach(log => {
+        const team = log.assigned_team || 'Unassigned';
+        teamCount[team] = (teamCount[team] || 0) + 1;
+      });
+
+      Object.entries(teamCount).forEach(([team, count]) => {
+        const btn = document.createElement("button");
+        btn.className = "category-btn";
+        btn.innerText = `${team} (${count})`;
+        btn.onclick = () => renderLogs(allLogs.filter(log => log.assigned_team === team));
+        categoriesDiv.appendChild(btn);
+      });
+
+      const showAllBtn = document.createElement("button");
+      showAllBtn.className = "category-btn";
+      showAllBtn.innerText = "Show All Logs";
+      showAllBtn.onclick = () => renderLogs(allLogs);
+      categoriesDiv.appendChild(showAllBtn);
+    }
+
+    fetch("/admin/logs")
+      .then(res => res.json())
+      .then(data => {
+        allLogs = data.logs;
+        generateTeamButtons(allLogs);
+        renderLogs(allLogs);  // Initially show all
+      });
+  </script>
+</body>
+</html>
